@@ -1,0 +1,56 @@
+[
+  {
+    "ioc": "8.8.8.8",
+    "threat_intel_score": 0,
+    "sources": [
+      {
+        "source": "AbuseIPDB",
+        "abuse_confidence_score": 0,
+        "total_reports": 237,
+        "country": "US",
+        "is_whitelisted": true
+      },
+      {
+        "source": "AlienVault OTX",
+        "pulse_count": 0,
+        "reputation": 0,
+        "country": "United States of America"
+      },
+      {
+        "source": "VirusTotal",
+        "malicious_votes": 0,
+        "suspicious_votes": 0,
+        "harmless_votes": 53,
+        "reputation": 564,
+        "country": "US"
+      }
+    ],
+    "timestamp": "2026-10-14T00:51:37.235632"
+  },
+  {
+    "ioc": "185.220.101.1",
+    "threat_intel_score": 70,
+    "sources": [
+      {
+        "source": "AbuseIPDB",
+        "abuse_confidence_score": 100,
+        "total_reports": 416,
+        "country": "DE",
+        "is_whitelisted": false
+      },
+      {
+        "source": "AlienVault OTX",
+        "error": "502 Server Error: Bad Gateway for url: https://otx.alienvault.com/api/v1/indicators/IPv4/185.220.101.1/general"
+      },
+      {
+        "source": "VirusTotal",
+        "malicious_votes": 13,
+        "suspicious_votes": 4,
+        "harmless_votes": 47,
+        "reputation": 3,
+        "country": "DE"
+      }
+    ],
+    "timestamp": "2026-10-14T00:51:51.538207"
+  }
+]
