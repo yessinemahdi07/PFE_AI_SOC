@@ -10,6 +10,8 @@ to enrich IOCs and calculate final risk scores.
 
 import json
 import os
+import re
+import glob
 import time
 import requests
 from datetime import datetime
@@ -18,7 +20,15 @@ CONFIG_DIR = "config"
 REPORT_DIR = "reports"
 API_KEYS_FILE = os.path.join(CONFIG_DIR, "api_keys.json")
 
-# Load API keys
+# Private IP ranges to exclude from enrichment (no point querying them)
+PRIVATE_IP_PREFIXES = ("127.", "10.", "192.168.", "172.16.", "172.17.",
+                       "172.18.", "172.19.", "172.20.", "172.21.", "172.22.",
+                       "172.23.", "172.24.", "172.25.", "172.26.", "172.27.",
+                       "172.28.", "172.29.", "172.30.", "172.31.")
+
+
+# --- API Key Loading ---
+
 def load_api_keys() -> dict:
     """Load API keys from config file."""
     if not os.path.exists(API_KEYS_FILE):
@@ -142,6 +152,39 @@ def enrich_ioc(ip: str, api_keys: dict) -> dict:
     }
 
 
+# --- Blue Agent Integration ---
+
+def extract_iocs_from_blue_report() -> list:
+    """
+    Extract IOCs from the latest Blue Agent report.
+    Scans for IP addresses, excluding private/local ranges.
+    """
+    blue_reports = sorted(glob.glob(os.path.join(REPORT_DIR, "blue_team_report_*.txt")))
+    if not blue_reports:
+        print("[!] No Blue Agent reports found.")
+        return []
+
+    latest_report = blue_reports[-1]
+    print(f"[*] Extracting IOCs from: {latest_report}")
+
+    with open(latest_report, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Regex to extract IPv4 addresses
+    ip_pattern = r"\b(?:\d{1,3}\.){3}\d{1,3}\b"
+    found_ips = re.findall(ip_pattern, content)
+
+    # Filter out private/local IPs
+    public_ips = set()
+    for ip in found_ips:
+        if not ip.startswith(PRIVATE_IP_PREFIXES):
+            public_ips.add(ip)
+
+    return list(public_ips)
+
+
+# --- Main Entry Point ---
+
 def run_risk_engine(iocs: list):
     """Main entry point: enrich a list of IOCs."""
     os.makedirs(REPORT_DIR, exist_ok=True)
@@ -168,9 +211,13 @@ def run_risk_engine(iocs: list):
 
 
 if __name__ == "__main__":
-    # Test IOCs (replace with real IOCs from your Blue Agent later)
-    test_iocs = [
-        "8.8.8.8",          # Google DNS (clean)
-        "185.220.101.1",    # Known Tor exit node (malicious)
-    ]
-    run_risk_engine(test_iocs)
+    # Step 1: Extract IOCs from Blue Agent report
+    iocs = extract_iocs_from_blue_report()
+
+    # Step 2: Fallback to test IOCs if no public IOCs were found
+    if not iocs:
+        print("[!] No public IOCs found in Blue Agent report. Using test IOCs.")
+        iocs = ["8.8.8.8", "185.220.101.1"]
+
+    print(f"[*] Enriching {len(iocs)} IOC(s): {iocs}\n")
+    run_risk_engine(iocs)
