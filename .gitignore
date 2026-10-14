@@ -19,3 +19,5 @@ reports/*.json
 # OS
 .DS_Store
 Thumbs.db
+# Sensitive config
+config/api_keys.json
