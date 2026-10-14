@@ -6,6 +6,7 @@ Internship: TDS by Nomios (Dec 2026 - May 2027)
 
 Queries free Threat Intel APIs (AlienVault OTX, AbuseIPDB, VirusTotal)
 to enrich IOCs and calculate final risk scores.
+Validates IOC types before submission (ip, hash, url, domain).
 """
 
 import json
@@ -20,7 +21,7 @@ CONFIG_DIR = "config"
 REPORT_DIR = "reports"
 API_KEYS_FILE = os.path.join(CONFIG_DIR, "api_keys.json")
 
-# Private IP ranges to exclude from enrichment (no point querying them)
+# Private IP ranges to exclude from enrichment
 PRIVATE_IP_PREFIXES = ("127.", "10.", "192.168.", "172.16.", "172.17.",
                        "172.18.", "172.19.", "172.20.", "172.21.", "172.22.",
                        "172.23.", "172.24.", "172.25.", "172.26.", "172.27.",
@@ -36,6 +37,73 @@ def load_api_keys() -> dict:
         return {}
     with open(API_KEYS_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+# --- IOC Classification ---
+
+def classify_ioc(value: str) -> str:
+    """
+    Classify an IOC value as ip, hash_md5, hash_sha1, hash_sha256, url, or domain.
+    Returns None if the value is not a valid IOC type.
+    """
+    value = value.strip()
+
+    # IPv4 address
+    if re.match(r"^(\d{1,3}\.){3}\d{1,3}$", value):
+        parts = value.split(".")
+        if all(0 <= int(p) <= 255 for p in parts):
+            return "ip"
+
+    # MD5 (32 hex chars)
+    if re.match(r"^[a-f0-9]{32}$", value, re.IGNORECASE):
+        return "hash_md5"
+
+    # SHA1 (40 hex chars)
+    if re.match(r"^[a-f0-9]{40}$", value, re.IGNORECASE):
+        return "hash_sha1"
+
+    # SHA256 (64 hex chars)
+    if re.match(r"^[a-f0-9]{64}$", value, re.IGNORECASE):
+        return "hash_sha256"
+
+    # URL
+    if re.match(r"^https?://", value, re.IGNORECASE):
+        return "url"
+
+    # Domain
+    if re.match(r"^[a-z0-9][a-z0-9\-]{1,61}[a-z0-9]\.[a-z]{2,}$", value, re.IGNORECASE):
+        return "domain"
+
+    return None
+
+
+def extract_iocs_from_text(text: str) -> list:
+    """
+    Extract all valid IOCs from a text blob.
+    Returns a list of unique (ioc_value, ioc_type) tuples.
+    """
+    iocs = set()
+
+    # Extract IPs
+    ip_matches = re.findall(r"\b(?:\d{1,3}\.){3}\d{1,3}\b", text)
+    for ip in ip_matches:
+        if classify_ioc(ip) == "ip":
+            if not ip.startswith(PRIVATE_IP_PREFIXES):
+                iocs.add((ip, "ip"))
+
+    # Extract URLs
+    url_matches = re.findall(r"https?://[^\s\)\]\},]+", text)
+    for url in url_matches:
+        iocs.add((url, "url"))
+
+    # Extract hashes (32-64 hex chars)
+    hash_matches = re.findall(r"\b[a-f0-9]{32,64}\b", text, re.IGNORECASE)
+    for h in hash_matches:
+        ioc_type = classify_ioc(h)
+        if ioc_type:
+            iocs.add((h, ioc_type))
+
+    return list(iocs)
 
 
 # --- Threat Intel Queries ---
@@ -123,29 +191,35 @@ def calculate_threat_intel_score(results: list) -> int:
     return min(score, 100)
 
 
-def enrich_ioc(ip: str, api_keys: dict) -> dict:
-    """Enrich a single IOC with all available threat intel sources."""
-    print(f"[*] Enriching IOC: {ip}")
+def enrich_ioc(ioc_value: str, ioc_type: str, api_keys: dict) -> dict:
+    """Enrich a single IOC with available threat intel sources."""
+    print(f"[*] Enriching IOC: {ioc_value} ({ioc_type})")
 
     results = []
-    if api_keys.get("abuseipdb"):
-        print("[*] Querying AbuseIPDB...")
-        results.append(query_abuseipdb(ip, api_keys["abuseipdb"]))
-        time.sleep(1)
 
-    if api_keys.get("alienvault_otx"):
-        print("[*] Querying AlienVault OTX...")
-        results.append(query_alienvault_otx(ip, api_keys["alienvault_otx"]))
-        time.sleep(1)
+    # Only IPs are supported in this version (APIs support IPs directly)
+    if ioc_type == "ip":
+        if api_keys.get("abuseipdb"):
+            print("[*] Querying AbuseIPDB...")
+            results.append(query_abuseipdb(ioc_value, api_keys["abuseipdb"]))
+            time.sleep(1)
 
-    if api_keys.get("virustotal"):
-        print("[*] Querying VirusTotal...")
-        results.append(query_virustotal(ip, api_keys["virustotal"]))
+        if api_keys.get("alienvault_otx"):
+            print("[*] Querying AlienVault OTX...")
+            results.append(query_alienvault_otx(ioc_value, api_keys["alienvault_otx"]))
+            time.sleep(1)
+
+        if api_keys.get("virustotal"):
+            print("[*] Querying VirusTotal...")
+            results.append(query_virustotal(ioc_value, api_keys["virustotal"]))
+    else:
+        print(f"[*] Skipping {ioc_type} enrichment (not supported in this version).")
 
     ti_score = calculate_threat_intel_score(results)
 
     return {
-        "ioc": ip,
+        "ioc": ioc_value,
+        "ioc_type": ioc_type,
         "threat_intel_score": ti_score,
         "sources": results,
         "timestamp": datetime.now().isoformat()
@@ -157,7 +231,7 @@ def enrich_ioc(ip: str, api_keys: dict) -> dict:
 def extract_iocs_from_blue_report() -> list:
     """
     Extract IOCs from the latest Blue Agent report.
-    Scans for IP addresses, excluding private/local ranges.
+    Returns list of (ioc_value, ioc_type) tuples.
     """
     blue_reports = sorted(glob.glob(os.path.join(REPORT_DIR, "blue_team_report_*.txt")))
     if not blue_reports:
@@ -170,17 +244,16 @@ def extract_iocs_from_blue_report() -> list:
     with open(latest_report, "r", encoding="utf-8") as f:
         content = f.read()
 
-    # Regex to extract IPv4 addresses
-    ip_pattern = r"\b(?:\d{1,3}\.){3}\d{1,3}\b"
-    found_ips = re.findall(ip_pattern, content)
+    iocs = extract_iocs_from_text(content)
 
-    # Filter out private/local IPs
-    public_ips = set()
-    for ip in found_ips:
-        if not ip.startswith(PRIVATE_IP_PREFIXES):
-            public_ips.add(ip)
+    if iocs:
+        print(f"[*] Found {len(iocs)} valid IOC(s):")
+        for ioc_value, ioc_type in iocs:
+            print(f"    - {ioc_value} ({ioc_type})")
+    else:
+        print("[!] No valid IOCs found in Blue Agent report.")
 
-    return list(public_ips)
+    return iocs
 
 
 # --- Main Entry Point ---
@@ -195,10 +268,10 @@ def run_risk_engine(iocs: list):
         return
 
     enriched = []
-    for ip in iocs:
-        result = enrich_ioc(ip, api_keys)
+    for ioc_value, ioc_type in iocs:
+        result = enrich_ioc(ioc_value, ioc_type, api_keys)
         enriched.append(result)
-        print(f"[+] {ip} -> Threat Intel Score: {result['threat_intel_score']}/100\n")
+        print(f"[+] {ioc_value} -> Threat Intel Score: {result['threat_intel_score']}/100\n")
 
     # Save report
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -214,10 +287,10 @@ if __name__ == "__main__":
     # Step 1: Extract IOCs from Blue Agent report
     iocs = extract_iocs_from_blue_report()
 
-    # Step 2: Fallback to test IOCs if no public IOCs were found
+    # Step 2: Fallback to test IOCs if none found
     if not iocs:
-        print("[!] No public IOCs found in Blue Agent report. Using test IOCs.")
-        iocs = ["8.8.8.8", "185.220.101.1"]
+        print("[!] No valid IOCs found. Using test IOCs.")
+        iocs = [("8.8.8.8", "ip"), ("185.220.101.1", "ip")]
 
-    print(f"[*] Enriching {len(iocs)} IOC(s): {iocs}\n")
+    print(f"[*] Enriching {len(iocs)} IOC(s)...\n")
     run_risk_engine(iocs)
