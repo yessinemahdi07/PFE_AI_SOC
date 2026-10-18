@@ -7,10 +7,6 @@ venv/
 env/
 
 # Generated outputs (do not commit)
-logs/*.json
-reports/*.pdf
-reports/*.txt
-reports/*.json
 
 # IDE
 .vscode/

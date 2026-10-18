@@ -1,0 +1,30 @@
+[
+  {
+    "ioc": "185.220.101.1",
+    "threat_intel_score": 70,
+    "sources": [
+      {
+        "source": "AbuseIPDB",
+        "abuse_confidence_score": 100
+      },
+      {
+        "source": "VirusTotal",
+        "malicious_votes": 13
+      }
+    ]
+  },
+  {
+    "ioc": "8.8.8.8",
+    "threat_intel_score": 0,
+    "sources": [
+      {
+        "source": "AbuseIPDB",
+        "abuse_confidence_score": 0
+      },
+      {
+        "source": "VirusTotal",
+        "malicious_votes": 0
+      }
+    ]
+  }
+]
