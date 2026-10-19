@@ -1,54 +1,44 @@
-# PFE: AI-Native SOC Orchestrator
+# 🏗️ System Architecture
 
-**Student:** Yassine Mahdi  
-**Institution:** ESPRIT — Cybersecurity Engineering  
-**Internship:** TDS by Nomios (Dec 2026 — May 2027)  
+The AI-Native SOC Orchestrator is a modular, pipeline-based architecture that integrates AI agents, enterprise security tools, and a cloud dashboard.
 
----
+```mermaid
+graph TD
+    %% Entities
+    User([SOC Analyst / CISO])
+    API[FastAPI Orchestrator]
+    
+    subgraph AI_Agents [AI Security Agents]
+        Red[Red Team Agent<br/>Microsoft PyRIT]
+        Blue[Blue Team Agent<br/>Llama 3.2 via Ollama]
+        TI[Threat Intel Engine<br/>OTX / VirusTotal / AbuseIPDB]
+    end
+    
+    subgraph Enterprise_Stack [Enterprise Security Stack]
+        Wazuh[Wazuh SIEM<br/>Indexer API]
+        TheHive[TheHive Case Management<br/>REST API]
+    end
+    
+    Dashboard[Streamlit Command Center<br/>Cloud Hosted]
 
-## 1. Project Objective
-Build an AI-native SOC orchestrator that automates Red/Blue Team exercises using Microsoft PyRIT, local LLMs (Ollama), and Wazuh SIEM.
+    %% Flow
+    User -->|Triggers POST /campaign/run| API
+    API -->|1. Execute Attacks| Red
+    Red -->|Attack Logs| Blue
+    Blue -->|Analyze & Recommend| TI
+    TI -->|Enriched Data| API
+    API -->|2. Ingest Telemetry| Wazuh
+    API -->|3. Create Incident Tickets| TheHive
+    API -->|4. Generate JSON/TXT| Dashboard
+    Dashboard -->|Visualize MITRE ATLAS/NIST| User
 
-## 2. Architecture
-
-[FastAPI Orchestrator]
-        |
-        v
-[Red Agent - PyRIT v0.10.0] --> 12 Attacks mapped to MITRE ATLAS & NIST AI RMF
-        |
-        v
-[Blue Agent - LLM SOC Analyst] --> Llama 3.2 evaluates response, assigns Verdict/Severity/Action
-        |
-        v
-[Risk Engine] --> Queries Threat Intel APIs for IOCs
-        |
-        v
-[Wazuh SIEM] --> Alerts ingested via Indexer Connector
-        |
-        v
-[Streamlit Dashboard] --> Visualizes MITRE, NIST, and SIEM Status
-
-## 3. Components
-
-### 3.1 Red Agent (`red_agent/red_agent_v3_pyrit.py`)
-- **Stack:** Microsoft PyRIT v0.10.0 + Ollama (Qwen3 4B)
-- **Function:** Executes 12 distinct attack scenarios sequentially.
-- **Frameworks:** Cross-mapped to MITRE ATLAS (AI techniques) and NIST AI RMF (risk categories).
-- **Coverage:** Prompt Injection, Data Leakage, Malware Generation, Evasion, PII Exfiltration.
-
-### 3.2 Blue Agent (`blue_agent/blue_agent_v3_soc.py`)
-- **Stack:** Python + Ollama (Llama 3.2 3B)
-- **Function:** Acts as a Senior SOC Analyst. Ingests PyRIT JSON and uses LLM to evaluate the AI's response.
-- **Output:** Verdict (MALICIOUS/SUSPICIOUS/BENIGN), Severity, and Recommended Action.
-
-### 3.3 Risk Engine (`risk_engine/risk_engine.py`)
-- **Stack:** Python + AlienVault OTX, AbuseIPDB, VirusTotal APIs
-- **Function:** Extracts IOCs from reports, enriches with Threat Intel.
-
-### 3.4 SIEM Integration (`siem_connector/wazuh_indexer_connector.py`)
-- **Stack:** Python + Wazuh Indexer (OpenSearch API)
-- **Function:** Pushes alerts directly to the Wazuh database.
-
-### 3.5 Dashboard (`dashboard/dashboard.py`)
-- **Stack:** Streamlit
-- **Function:** Real-time visualization of MITRE ATLAS coverage, NIST categories, and SIEM status.
+    classDef red fill:#FF003C,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef blue fill:#00F0FF,stroke:#fff,stroke-width:2px,color:#000;
+    classDef green fill:#00FF85,stroke:#fff,stroke-width:2px,color:#000;
+    classDef gray fill:#1E2530,stroke:#fff,stroke-width:2px,color:#fff;
+    
+    class Red red;
+    class Blue blue;
+    class Wazuh,TheHive green;
+    class API,Dashboard,TI gray;
+    
