@@ -6,3 +6,4 @@ pyrit>=0.10.0
 fastapi>=0.100.0
 uvicorn>=0.20.0
 fpdf2>=2.7.0
+plotly
