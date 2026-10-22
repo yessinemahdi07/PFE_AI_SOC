@@ -1,0 +1,88 @@
+{
+  "name": "AEGIS AI - Autonomous SecOps Incident Response",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "aegis-threat-alert",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "node-webhook-1",
+      "name": "AEGIS Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.severity }}",
+              "value2": "CRITICAL"
+            }
+          ]
+        }
+      },
+      "id": "node-filter-critical",
+      "name": "Is Critical Severity?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "channel": "#secops-critical-alerts",
+        "text": "=🚨 *AEGIS AI THREAT INTERCEPT*\n*Type:* {{ $json.event_type }}\n*Severity:* {{ $json.severity }}\n*Details:* {{ JSON.stringify($json.data) }}"
+      },
+      "id": "node-slack-alert",
+      "name": "Send Slack Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [720, 200]
+    },
+    {
+      "parameters": {
+        "toEmail": "ciso@enterprise.internal",
+        "subject": "=[AEGIS-AI] Autonomous Containment Action Enforced",
+        "text": "=AEGIS AI Autonomous Cyber Defense Mesh has intercepted a high-risk exploit:\n\n{{ JSON.stringify($json, null, 2) }}"
+      },
+      "id": "node-email-dispatch",
+      "name": "Notify Incident Team",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [720, 400]
+    }
+  ],
+  "connections": {
+    "AEGIS Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Is Critical Severity?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Critical Severity?": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Incident Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

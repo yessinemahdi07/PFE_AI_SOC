@@ -11,6 +11,7 @@ services:
     environment:
       - ENVIRONMENT=production
       - OLLAMA_URL=http://host.docker.internal:11434
+      - N8N_URL=http://host.docker.internal:5678
       - WAZUH_INDEXER_URL=https://wazuh-indexer:9200
       - THEHIVE_URL=http://thehive:9000
     volumes:

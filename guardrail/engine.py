@@ -48,7 +48,7 @@ class InlineGuardrailEngine:
         # Dynamic Hot-Patched Rules (synced from Blue Swarm)
         self.dynamic_hotpatches: Dict[str, Dict[str, Any]] = {}
 
-    def register_hotpatch(self, rule_id: str, pattern_str: str, reason: str):
+    def register_hotpatch(self, rule_id: str, pattern_str: str, reason: str = "Autonomous Blue Swarm Hot-Patch"):
         """Registers a real-time hot-patch dynamically emitted by the Blue Swarm."""
         try:
             compiled = re.compile(pattern_str, re.IGNORECASE)
@@ -59,6 +59,10 @@ class InlineGuardrailEngine:
             }
         except Exception:
             pass
+
+    def hotpatch_rule(self, rule_id: str, pattern_str: str, reason: str = "Autonomous Blue Swarm Hot-Patch"):
+        """Alias for register_hotpatch."""
+        return self.register_hotpatch(rule_id, pattern_str, reason)
 
     def inspect_and_sanitize(self, prompt: str) -> GuardrailInspectionResult:
         """
