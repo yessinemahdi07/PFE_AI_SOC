@@ -14,7 +14,8 @@
 
 > **Author:** Yassine Mahdi (ESPRIT - Cybersecurity Engineering)  
 > **Internship & R&D:** TDS by Nomios (Dec 2026 - May 2027)  
-> **Platform Version:** 5.0.0-Enterprise (Autonomous Purple Teaming & Active Defense Mesh)
+> **Platform Version:** 5.0.0-Enterprise (Autonomous Purple Teaming & Active Defense Mesh)  
+> **Engineering Handover & Architecture Document:** 👉 [HANDOVER.md](HANDOVER.md)
 
 ---
 
