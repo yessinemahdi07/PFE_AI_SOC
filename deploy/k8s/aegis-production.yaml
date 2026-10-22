@@ -1,0 +1,161 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: aegis-mesh
+  labels:
+    app.kubernetes.io/name: aegis-ai
+    app.kubernetes.io/part-of: autonomous-cyber-defense
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aegis-config
+  namespace: aegis-mesh
+data:
+  AEGIS_ENVIRONMENT: "production"
+  LOG_LEVEL: "INFO"
+  ENABLE_PROMETHEUS: "true"
+  RATE_LIMIT_PER_MINUTE: "500"
+  OLLAMA_ENDPOINT: "http://ollama-service.aegis-mesh.svc.cluster.local:11434"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aegis-api-gateway
+  namespace: aegis-mesh
+  labels:
+    app: aegis-api-gateway
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: aegis-api-gateway
+  template:
+    metadata:
+      labels:
+        app: aegis-api-gateway
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: gateway
+        image: aegis-ai/orchestrator:v5.0.0
+        imagePullPolicy: IfNotPresent
+        envFrom:
+        - configMapRef:
+            name: aegis-config
+        ports:
+        - name: http
+          containerPort: 8000
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 2
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8000
+          initialDelaySeconds: 3
+          periodSeconds: 5
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 2000m
+            memory: 2Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aegis-dashboard
+  namespace: aegis-mesh
+  labels:
+    app: aegis-dashboard
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: aegis-dashboard
+  template:
+    metadata:
+      labels:
+        app: aegis-dashboard
+    spec:
+      containers:
+      - name: ui
+        image: aegis-ai/dashboard:v5.0.0
+        ports:
+        - name: streamlit
+          containerPort: 8501
+        env:
+        - name: STREAMLIT_SERVER_PORT
+          value: "8501"
+        - name: STREAMLIT_SERVER_HEADLESS
+          value: "true"
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aegis-api-service
+  namespace: aegis-mesh
+spec:
+  type: ClusterIP
+  selector:
+    app: aegis-api-gateway
+  ports:
+  - name: http
+    port: 8000
+    targetPort: 8000
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aegis-dashboard-service
+  namespace: aegis-mesh
+spec:
+  type: ClusterIP
+  selector:
+    app: aegis-dashboard
+  ports:
+  - name: streamlit
+    port: 8501
+    targetPort: 8501
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: aegis-api-hpa
+  namespace: aegis-mesh
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: aegis-api-gateway
+  minReplicas: 3
+  maxReplicas: 50
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
