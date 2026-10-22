@@ -7,6 +7,8 @@ venv/
 env/
 
 # Generated outputs (do not commit)
+*.db
+database/*.db
 
 # IDE
 .vscode/
@@ -15,5 +17,6 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
 # Sensitive config
 config/api_keys.json

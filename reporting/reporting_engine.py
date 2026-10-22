@@ -96,7 +96,7 @@ class SOCReport(FPDF):
 
 def load_latest_logs() -> tuple:
     """Load the latest Red and Blue agent outputs."""
-    red_logs = sorted(glob.glob(os.path.join(LOG_DIR, "red_team_campaign_*.json")))
+    red_logs = sorted(glob.glob(os.path.join(LOG_DIR, "red_team_expanded_*.json")) + glob.glob(os.path.join(LOG_DIR, "red_team_campaign_*.json")))
     risk_reports = sorted(glob.glob(os.path.join(REPORT_DIR, "risk_engine_report_*.json")))
 
     red_data = []

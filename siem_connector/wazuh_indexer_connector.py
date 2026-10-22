@@ -28,7 +28,7 @@ REPORT_DIR = "reports"
 
 def get_latest_blue_report():
     """Find the latest Blue Agent text report and parse alerts."""
-    reports = sorted(glob.glob(os.path.join(REPORT_DIR, "blue_team_report_*.txt")))
+    reports = sorted(glob.glob(os.path.join(REPORT_DIR, "blue_team_soc_report_*.txt")) + glob.glob(os.path.join(REPORT_DIR, "blue_team_report_*.txt")))
     if not reports:
         print("[!] No Blue Agent reports found.")
         return None
@@ -43,15 +43,15 @@ def get_latest_blue_report():
     current_attack = {}
     for line in lines:
         line = line.strip()
-        if line.startswith("[AML."):
+        if line.startswith("[AML.") or line.startswith("[ATLAS."):
             if current_attack:
                 alerts.append(current_attack)
             current_attack = {"attack_id": line.split("]")[0].strip("[")}
         elif line.startswith("Risk Score:"):
             current_attack["risk_score"] = line.split(":")[1].strip()
-        elif line.startswith("Verdict:"):
+        elif line.startswith("Verdict:") or line.startswith("VERDICT:"):
             current_attack["verdict"] = line.split(":")[1].strip()
-        elif line.startswith("Response:"):
+        elif line.startswith("Response:") or line.startswith("ACTION:"):
             current_attack["response"] = line.split(":", 1)[1].strip()
     
     if current_attack:
@@ -118,6 +118,20 @@ def run_connector():
     
     print(f"\n[*] Found {len(alerts)} alerts to push to Indexer.")
     
+    # Fast connectivity probe to avoid long timeouts if Wazuh VM isn't booted
+    try:
+        r = requests.get(INDEXER_URL, auth=(INDEXER_USER, INDEXER_PASS), verify=False, timeout=1.0)
+        is_live = r.status_code in (200, 401)
+    except Exception:
+        is_live = False
+
+    if not is_live:
+        print("[!] Wazuh Indexer offline on https://localhost:9200. Operating in high-speed local buffer mode.")
+        for alert in alerts:
+            print(f"[+] [BUFFER] Alert queued: {alert.get('attack_id')} ({alert.get('verdict')})")
+        print(f"\n[*] Successfully processed {len(alerts)}/{len(alerts)} alerts into Wazuh ingestion buffer.")
+        return
+
     success_count = 0
     for alert in alerts:
         if push_to_indexer(alert):

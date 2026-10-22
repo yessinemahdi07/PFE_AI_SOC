@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # AEGIS AI API Orchestrator & Autonomous Swarm Engine
+  aegis-api:
+    build: .
+    container_name: aegis-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - WAZUH_INDEXER_URL=https://wazuh-indexer:9200
+      - THEHIVE_URL=http://thehive:9000
+    volumes:
+      - ./logs:/app/logs
+      - ./reports:/app/reports
+      - ./database:/app/database
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: ["uvicorn", "api.orchestrator:app", "--host", "0.0.0.0", "--port", "8000"]
+
+  # AEGIS AI SOC Mission Control Command Center
+  aegis-dashboard:
+    build: .
+    container_name: aegis-dashboard
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      - API_URL=http://aegis-api:8000
+    volumes:
+      - ./logs:/app/logs
+      - ./reports:/app/reports
+      - ./database:/app/database
+    depends_on:
+      - aegis-api
+    command: ["streamlit", "run", "dashboard/dashboard.py", "--server.port=8501", "--server.address=0.0.0.0"]
+
+networks:
+  default:
+    name: aegis-network
