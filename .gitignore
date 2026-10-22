@@ -9,6 +9,10 @@ env/
 # Generated outputs (do not commit)
 *.db
 database/*.db
+reports/AEGIS_AI_*
+reports/blue_team_soc_report_*
+logs/red_team_*
+.pytest_cache/
 
 # IDE
 .vscode/

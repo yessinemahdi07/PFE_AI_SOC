@@ -307,8 +307,18 @@ def get_latest_campaign_details():
     return campaign
 
 @app.post("/api/v1/soar/contain", tags=["Active Defense SOAR"])
-def execute_manual_containment(req: ManualRemediationRequest):
-    """Executes a real-time active defense containment action."""
+def execute_manual_containment(req: ManualRemediationRequest, request: Request, response: Response):
+    """
+    Executes a real-time active defense containment action.
+    Supports idempotency via 'Idempotency-Key' request header.
+    """
+    idempotency_key = request.headers.get("Idempotency-Key")
+    if idempotency_key:
+        cached = idempotency_manager.get(idempotency_key)
+        if cached:
+            response.headers["X-Cache"] = "HIT"
+            return cached
+
     action = ActiveRemediationAction(
         action_type=req.action_type,
         target=req.target,
@@ -318,7 +328,13 @@ def execute_manual_containment(req: ManualRemediationRequest):
         enforcement_details={"manual_operator": "admin", "enforced_via_api": True}
     )
     save_remediation(action)
-    return {"status": "SUCCESS", "action": action}
+    result = {"status": "SUCCESS", "action": action.model_dump() if hasattr(action, "model_dump") else action.dict()}
+    
+    if idempotency_key:
+        idempotency_manager.set(idempotency_key, result)
+        response.headers["X-Cache"] = "MISS"
+
+    return result
 
 @app.get("/api/v1/soar/actions", tags=["Active Defense SOAR"])
 def list_active_remediations(limit: int = 50):
@@ -401,6 +417,24 @@ def get_mitre_olap_distribution():
 def get_sre_olap_metrics():
     """Returns sub-millisecond DuckDB SRE percentiles and containment ratios."""
     return analytics_engine.compute_sre_executive_summary()
+
+@app.get("/metrics", response_class=PlainTextResponse, tags=["SRE & Observability"])
+def get_prometheus_metrics():
+    """Prometheus exposition format for scraping Golden Signals."""
+    return metrics.export_metrics()
+
+@app.get("/healthz", tags=["SRE & Observability"])
+def k8s_liveness():
+    """Kubernetes liveness probe."""
+    return probe_liveness()
+
+@app.get("/readyz", tags=["SRE & Observability"])
+def k8s_readiness():
+    """Kubernetes readiness probe."""
+    is_ready, details = probe_readiness()
+    if not is_ready:
+        raise HTTPException(status_code=503, detail=details)
+    return details
 
 @app.get("/health", tags=["System"])
 @app.get("/api/v1/health", tags=["System"])
