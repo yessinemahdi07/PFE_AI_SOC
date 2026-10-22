@@ -46,8 +46,8 @@ from core.sigma_rules import rule_synthesizer
 from core.stix_exporter import stix_exporter
 from core.n8n_connector import n8n_orchestrator
 
-LOG_DIR = str(settings.LOGS_DIR)
-REPORT_DIR = str(settings.REPORTS_DIR)
+LOG_DIR = str(settings.LOG_DIR)
+REPORT_DIR = str(settings.REPORT_DIR)
 
 st.set_page_config(
     page_title="AEGIS AI™ | Autonomous Cognitive Cyber Defense Mesh",
@@ -73,13 +73,18 @@ st.markdown("""
     header {visibility: hidden;}
     
     /* Pristine Apple Porcelain White Canvas with Ambient Violet Glows */
+    [data-testid="stAppViewContainer"],
     .stApp {
         background-color: #FFFFFF !important;
         background-image: 
             radial-gradient(circle at 15% 10%, rgba(124, 58, 237, 0.08) 0%, transparent 35%),
             radial-gradient(circle at 85% 15%, rgba(168, 85, 247, 0.07) 0%, transparent 40%),
-            radial-gradient(circle at 50% 90%, rgba(99, 102, 241, 0.06) 0%, transparent 45%);
+            radial-gradient(circle at 50% 90%, rgba(99, 102, 241, 0.06) 0%, transparent 45%) !important;
         color: #0F172A !important;
+    }
+    
+    [data-testid="stHeader"] {
+        background: transparent !important;
     }
     
     .block-container {
@@ -91,12 +96,12 @@ st.markdown("""
     /* Dynamic Island Header */
     .dynamic-island {
         background: #FFFFFF;
-        border: 1.5px solid rgba(124, 58, 237, 0.3);
+        border: 2px solid rgba(124, 58, 237, 0.4);
         border-radius: 9999px;
-        padding: 10px 24px;
+        padding: 12px 28px;
         box-shadow: 
-            0 8px 30px -4px rgba(124, 58, 237, 0.15),
-            0 2px 8px rgba(0, 0, 0, 0.03);
+            0 10px 35px -4px rgba(124, 58, 237, 0.22),
+            0 0 0 1px rgba(124, 58, 237, 0.2);
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -113,45 +118,45 @@ st.markdown("""
     }
     
     .pill-accent-purple {
-        background: linear-gradient(135deg, rgba(124, 58, 237, 0.12) 0%, rgba(168, 85, 247, 0.15) 100%);
-        border: 1.5px solid rgba(124, 58, 237, 0.35);
+        background: linear-gradient(135deg, rgba(124, 58, 237, 0.15) 0%, rgba(168, 85, 247, 0.2) 100%);
+        border: 1.5px solid #7C3AED;
         color: #7C3AED;
         font-weight: 800;
-        font-size: 11px;
-        padding: 5px 14px;
+        font-size: 11.5px;
+        padding: 6px 16px;
         border-radius: 9999px;
         letter-spacing: 0.04em;
         text-transform: uppercase;
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        box-shadow: 0 2px 10px rgba(124, 58, 237, 0.1);
+        box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
     }
     
     .pulse-dot-purple {
-        width: 8px;
-        height: 8px;
+        width: 9px;
+        height: 9px;
         background-color: #7C3AED;
         border-radius: 50%;
-        box-shadow: 0 0 10px #7C3AED;
+        box-shadow: 0 0 12px #7C3AED;
         animation: pulsePurple 1.8s infinite;
     }
     
     @keyframes pulsePurple {
         0% { transform: scale(0.9); opacity: 0.8; }
-        50% { transform: scale(1.3); opacity: 1; box-shadow: 0 0 14px #A855F7; }
+        50% { transform: scale(1.3); opacity: 1; box-shadow: 0 0 16px #A855F7; }
         100% { transform: scale(0.9); opacity: 0.8; }
     }
     
     /* iOS 18 Glassmorphism Cards with Vibrant Violet Accents */
     .kpi-card-purple {
         background: #FFFFFF;
-        border: 1.5px solid rgba(124, 58, 237, 0.2);
+        border: 2px solid rgba(124, 58, 237, 0.25);
         border-radius: 24px;
         padding: 22px 24px;
         box-shadow: 
-            0 10px 25px -4px rgba(124, 58, 237, 0.08),
-            0 2px 6px rgba(0, 0, 0, 0.02);
+            0 10px 25px -4px rgba(124, 58, 237, 0.12),
+            0 0 0 1px rgba(124, 58, 237, 0.1);
         transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         position: relative;
         overflow: hidden;
@@ -160,8 +165,8 @@ st.markdown("""
         transform: translateY(-3px);
         border-color: #7C3AED;
         box-shadow: 
-            0 16px 36px -4px rgba(124, 58, 237, 0.18),
-            0 0 0 1px #7C3AED;
+            0 16px 36px -4px rgba(124, 58, 237, 0.25),
+            0 0 0 2px #7C3AED;
     }
     .kpi-top-bar {
         height: 4px;
@@ -182,7 +187,7 @@ st.markdown("""
         color: #7C3AED;
         margin-top: 6px;
         letter-spacing: -0.04em;
-        text-shadow: 0 0 20px rgba(124, 58, 237, 0.15);
+        text-shadow: 0 0 20px rgba(124, 58, 237, 0.2);
     }
     .kpi-sub-purple {
         font-size: 12px;
@@ -194,21 +199,21 @@ st.markdown("""
     /* iOS Finding & Incident Cards */
     .finding-card-purple {
         background: #FFFFFF;
-        border: 1.5px solid rgba(124, 58, 237, 0.18);
+        border: 1.5px solid rgba(124, 58, 237, 0.25);
         border-left: 6px solid #7C3AED;
         border-radius: 20px;
         padding: 20px 24px;
         margin-bottom: 16px;
         box-shadow: 
-            0 6px 20px -2px rgba(124, 58, 237, 0.06),
+            0 6px 20px -2px rgba(124, 58, 237, 0.08),
             0 1px 3px rgba(0, 0, 0, 0.02);
         transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .finding-card-purple:hover {
         border-color: #7C3AED;
         box-shadow: 
-            0 12px 28px -2px rgba(124, 58, 237, 0.14),
-            0 2px 8px rgba(0, 0, 0, 0.04);
+            0 12px 28px -2px rgba(124, 58, 237, 0.18),
+            0 0 0 1px #7C3AED;
         transform: translateY(-2px);
     }
 
@@ -222,7 +227,7 @@ st.markdown("""
         font-size: 11px;
         font-weight: 800;
         letter-spacing: 0.03em;
-        box-shadow: 0 2px 6px rgba(124, 58, 237, 0.1);
+        box-shadow: 0 2px 6px rgba(124, 58, 237, 0.15);
     }
     .badge-critical-red {
         background: #FFF1F2;
@@ -243,71 +248,127 @@ st.markdown("""
         font-weight: 800;
     }
 
-    /* iOS 18 Segmented Pill Tab Bar */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 6px;
-        background-color: #F8F9FE;
-        border-radius: 9999px;
-        padding: 6px;
-        border: 1.5px solid rgba(124, 58, 237, 0.2);
-        box-shadow: 0 4px 20px rgba(124, 58, 237, 0.06);
-        margin-bottom: 24px;
+    /* Streamlit 1.40 Segmented Pill Tabs Overhaul */
+    div[data-testid="stTabs"] {
+        background: transparent !important;
     }
-    .stTabs [data-baseweb="tab"] {
-        height: 40px;
-        background: transparent;
-        color: #64748B;
-        font-weight: 700;
-        font-size: 13px;
-        border-radius: 9999px;
-        padding: 0px 20px;
-        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    div[data-testid="stTabs"] [data-baseweb="tab-list"],
+    div[data-baseweb="tab-list"] {
+        gap: 8px !important;
+        background-color: #F5F3FF !important;
+        border-radius: 9999px !important;
+        padding: 6px !important;
+        border: 2px solid rgba(124, 58, 237, 0.35) !important;
+        box-shadow: 0 6px 24px rgba(124, 58, 237, 0.1) !important;
+        margin-bottom: 24px !important;
+    }
+    div[data-testid="stTabs"] button,
+    button[data-baseweb="tab"] {
+        height: 42px !important;
+        background: transparent !important;
+        color: #64748B !important;
+        font-weight: 700 !important;
+        font-size: 13.5px !important;
+        border-radius: 9999px !important;
+        padding: 0px 22px !important;
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
         border: none !important;
     }
-    .stTabs [aria-selected="true"] {
+    div[data-testid="stTabs"] button[aria-selected="true"],
+    button[data-baseweb="tab"][aria-selected="true"] {
         background: linear-gradient(135deg, #7C3AED 0%, #6366F1 100%) !important;
         color: #FFFFFF !important;
         font-weight: 800 !important;
-        box-shadow: 0 6px 20px rgba(124, 58, 237, 0.45) !important;
+        border-radius: 9999px !important;
+        box-shadow: 0 6px 22px rgba(124, 58, 237, 0.5) !important;
         border: none !important;
     }
+    div[data-testid="stTabs"] button[aria-selected="true"] p,
+    button[data-baseweb="tab"][aria-selected="true"] p {
+        color: #FFFFFF !important;
+        font-weight: 800 !important;
+    }
+    div[data-testid="stTabs"] [data-baseweb="tab-border"] {
+        display: none !important;
+    }
+    div[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
+        display: none !important;
+    }
 
-    /* Glowing Violet Action Buttons */
-    div.stButton > button {
+    /* Streamlit 1.40 Button Overhaul */
+    button[data-testid="baseButton-primary"],
+    div.stButton > button[kind="primary"],
+    div.stButton > button:first-child[kind="primary"] {
+        background: linear-gradient(135deg, #7C3AED 0%, #8B5CF6 50%, #6366F1 100%) !important;
+        color: #FFFFFF !important;
+        border: none !important;
         border-radius: 9999px !important;
         font-weight: 800 !important;
-        letter-spacing: -0.01em !important;
-        font-size: 13.5px !important;
+        font-size: 14px !important;
         padding: 10px 26px !important;
+        box-shadow: 0 6px 24px rgba(124, 58, 237, 0.45) !important;
         transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
-        border: 1.5px solid rgba(124, 58, 237, 0.25) !important;
+    }
+    button[data-testid="baseButton-primary"]:hover {
+        transform: translateY(-2px) scale(1.02) !important;
+        box-shadow: 0 12px 32px rgba(124, 58, 237, 0.6) !important;
+    }
+    button[data-testid="baseButton-primary"] p,
+    button[data-testid="baseButton-primary"] span {
+        color: #FFFFFF !important;
+        font-weight: 800 !important;
+    }
+    
+    button[data-testid="baseButton-secondary"],
+    div.stButton > button {
+        border-radius: 9999px !important;
+        font-weight: 700 !important;
+        font-size: 13.5px !important;
+        padding: 9px 24px !important;
+        border: 2px solid rgba(124, 58, 237, 0.35) !important;
         background: #FFFFFF !important;
         color: #7C3AED !important;
         box-shadow: 0 4px 14px rgba(124, 58, 237, 0.08) !important;
     }
+    button[data-testid="baseButton-secondary"]:hover,
     div.stButton > button:hover {
         border-color: #7C3AED !important;
         background: #F5F3FF !important;
+        color: #6D28D9 !important;
         transform: translateY(-2px) !important;
-        box-shadow: 0 8px 24px rgba(124, 58, 237, 0.2) !important;
-    }
-    div.stButton > button[kind="primary"] {
-        background: linear-gradient(135deg, #7C3AED 0%, #8B5CF6 50%, #6366F1 100%) !important;
-        color: #FFFFFF !important;
-        border: none !important;
-        box-shadow: 0 8px 24px rgba(124, 58, 237, 0.4) !important;
-    }
-    div.stButton > button[kind="primary"]:hover {
-        transform: translateY(-2px) scale(1.01) !important;
-        box-shadow: 0 12px 32px rgba(124, 58, 237, 0.55) !important;
+        box-shadow: 0 8px 24px rgba(124, 58, 237, 0.22) !important;
     }
 
     /* iOS Frosted Glass Sidebar */
     [data-testid="stSidebar"] {
-        background: rgba(255, 255, 255, 0.95) !important;
-        backdrop-filter: blur(25px);
-        border-right: 1.5px solid rgba(124, 58, 237, 0.15) !important;
-        box-shadow: 4px 0 24px rgba(124, 58, 237, 0.04);
+        background: #FAFAFE !important;
+        border-right: 2px solid rgba(124, 58, 237, 0.2) !important;
+        box-shadow: 6px 0 28px rgba(124, 58, 237, 0.06);
+    }
+    
+    /* Interactive Controls Accent */
+    input[type="checkbox"]:checked {
+        accent-color: #7C3AED !important;
+    }
+    input[type="radio"]:checked {
+        accent-color: #7C3AED !important;
+    }
+    [data-baseweb="slider"] div[role="slider"] {
+        background-color: #7C3AED !important;
+        border-color: #7C3AED !important;
+    }
+    
+    /* Interactive Console Box */
+    .console-terminal {
+        background: #0B0F19;
+        color: #A78BFA;
+        padding: 16px;
+        border-radius: 16px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+        line-height: 1.6;
+        border: 1.5px solid rgba(124, 58, 237, 0.35);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
     }
     
     /* Interactive Console Box */
