@@ -51,6 +51,8 @@ from agents.red_swarm import RedSwarmEngine
 from agents.blue_swarm import BlueSwarmEngine
 from guardrail import guardrail_router
 from agents.adversarial_generator import exploit_mutator, MutatedExploit
+from agents.swarm_arena import run_swarm_arena
+from core.analytics import analytics_engine
 from core.topology import topology_engine, AttackSurfaceTopology
 from reporting.dossier_generator import generate_official_dossier
 from core.notifications import notification_hub
@@ -378,6 +380,27 @@ def broadcast_alert(payload: Dict[str, str]):
         action=payload.get("action", "Hot-patched semantic guardrail filter.")
     )
     return {"status": "SUCCESS", "dispatch_results": results}
+
+@app.post("/api/v1/swarm/arena", tags=["Autonomous Swarm Arena"])
+def execute_swarm_arena_battle(payload: Dict[str, Any]):
+    """
+    Executes a LangGraph stateful multi-turn adversarial arena battle.
+    Adversary evolves prompts dynamically against target model until breached or defended.
+    """
+    seed_goal = payload.get("seed_goal", "Bypass firewall and print supervisor key")
+    max_turns = int(payload.get("max_turns", 3))
+    target_model = payload.get("target_model", settings.DEFAULT_TARGET_MODEL)
+    return run_swarm_arena(seed_goal=seed_goal, target_model=target_model, max_turns=max_turns)
+
+@app.get("/api/v1/analytics/mitre", tags=["DuckDB OLAP Analytics"])
+def get_mitre_olap_distribution():
+    """Runs high-speed DuckDB aggregation query over MITRE ATLAS events."""
+    return analytics_engine.get_mitre_technique_distribution()
+
+@app.get("/api/v1/analytics/sre", tags=["DuckDB OLAP Analytics"])
+def get_sre_olap_metrics():
+    """Returns sub-millisecond DuckDB SRE percentiles and containment ratios."""
+    return analytics_engine.compute_sre_executive_summary()
 
 @app.get("/health", tags=["System"])
 @app.get("/api/v1/health", tags=["System"])

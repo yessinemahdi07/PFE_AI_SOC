@@ -6,11 +6,13 @@ and blocks adversarial attempts at the perimeter before reaching backend LLMs.
 import time
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 import requests
 
 from core.config import settings
 from guardrail.engine import inline_guardrail, GuardrailInspectionResult
+from guardrail.stream_proxy import generate_guardrail_sse_stream
 from core.db import log_telemetry_event
 
 router = APIRouter(prefix="/v1", tags=["Inline LLM Guardrail Proxy"])
@@ -103,6 +105,20 @@ async def chat_completions_proxy(req: ChatCompletionRequest, response: Response)
     except Exception:
         # Fallback simulation
         llm_output_text = f"AEGIS Guardrail Protected Response: Processed request safely. (Action: {inspection.action})"
+
+    # Handle real-time Server-Sent Events (SSE) streaming
+    if req.stream:
+        words = llm_output_text.split(" ")
+        simulated_tokens = [w + " " for w in words]
+        return StreamingResponse(
+            generate_guardrail_sse_stream(req.model, combined_prompt, simulated_tokens),
+            media_type="text/event-stream",
+            headers={
+                "X-AEGIS-Status": inspection.action,
+                "X-AEGIS-Latency-MS": str(inspection.inspection_latency_ms),
+                "X-AEGIS-Risk-Score": str(inspection.risk_score),
+            }
+        )
 
     return ChatCompletionResponse(
         id=f"chatcmpl-aegis-{int(time.time())}",
