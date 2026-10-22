@@ -18,11 +18,14 @@ import asyncio
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, status
+from fastapi import FastAPI, HTTPException, BackgroundTasks, status, Request, Response
+from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import uvicorn
 
+from core.logger import set_correlation_id, get_correlation_id, get_logger
+from core.sre import metrics, rate_limiter, idempotency_manager, probe_liveness, probe_readiness
 from core.config import settings
 from core.schemas import (
     CampaignRun,
@@ -69,6 +72,40 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# FAANG-Grade Observability & SRE Middleware (Correlation ID, Rate Limiting, Metrics)
+@app.middleware("http")
+async def faang_observability_middleware(request: Request, call_next):
+    # 1. Correlation ID Context Propagation
+    cid = request.headers.get("X-Correlation-ID") or request.headers.get("X-Request-ID")
+    cid = set_correlation_id(cid)
+
+    # 2. Sliding-Window Rate Limiting (exempt internal telemetry/health/metrics)
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    path = request.url.path
+    if not (path.startswith("/health") or path.startswith("/metrics") or path.startswith("/ready") or path.startswith("/docs") or path.startswith("/openapi")):
+        allowed, remaining, retry_after = rate_limiter.check_rate_limit(client_ip)
+        if not allowed:
+            return Response(
+                content=json.dumps({"error": "TOO_MANY_REQUESTS", "message": "Rate limit exceeded. Slow down.", "retry_after_seconds": retry_after}),
+                status_code=429,
+                media_type="application/json",
+                headers={"Retry-After": str(retry_after), "X-Correlation-ID": cid}
+            )
+
+    # 3. Execution & Latency Profiling
+    start_time = time.perf_counter()
+    response: Response = await call_next(request)
+    duration_sec = time.perf_counter() - start_time
+    duration_ms = round(duration_sec * 1000, 2)
+
+    # 4. Prometheus Metric Record
+    metrics.record_request(request.method, path, response.status_code, duration_sec)
+
+    # 5. Stamp Response Headers
+    response.headers["X-Correlation-ID"] = cid
+    response.headers["X-Response-Time-MS"] = str(duration_ms)
+    return response
 
 # --- In-Memory State for Active Campaigns ---
 ACTIVE_CAMPAIGNS: Dict[str, Dict[str, Any]] = {}

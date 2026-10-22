@@ -6,7 +6,7 @@ and local JSON fallback for development environments.
 import os
 import json
 from pathlib import Path
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -59,8 +59,7 @@ class Settings(BaseSettings):
     REPORT_DIR: Path = PROJECT_ROOT / "reports"
     DATA_DIR: Path = PROJECT_ROOT / "database"
 
-    class Config:
-        case_sensitive = True
+    model_config = SettingsConfigDict(case_sensitive=True, extra="allow")
 
 settings = Settings()
 
